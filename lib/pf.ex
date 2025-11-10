@@ -19,7 +19,7 @@ defmodule Pf do
 
   def validade(mapa) do
     if tamanho(mapa) == :ok do
-      if aux2(aux(mapa))==1 do
+      if aux2(aux(mapa)) == 1 do
         proximopasso()
       else
         "Entrada invalida, blocos sobrepostos"
@@ -69,13 +69,61 @@ defmodule Pf do
   end
 
   def aux2(l) do
-      if Enum.member?(l,:erro) do
-        0
-      else
-        1
-      end
+    if Enum.member?(l, :erro) do
+      0
+    else
+      1
+    end
   end
+
   def proximopasso() do
     "tudo certo"
+  end
+
+  # Função BFS (Breadth-First Search) para percorrer o grafo
+  # paths: mapa de vértices para a camada em que foram encontrados
+  # graph: mapa de adjacências {nó => vizinhos}
+  # [] lista vazia de nós atuais
+  # neighbors: lista de próximos vizinhos a visitar
+  # layer: profundidade atual da BFS
+
+  # Caso base: nenhum nó para processar e nenhum vizinho restante
+  defp bfs(paths, _, [], [], _), do: paths
+
+  # Se não houver nós atuais, mas houver vizinhos para explorar, passa para a próxima camada
+  defp bfs(paths, graph, [], neighbors, layer) do
+    bfs(paths, graph, neighbors, [], layer + 1)
+  end
+
+  # Se o nó já está no mapa de caminhos, apenas continua com o restante da lista
+  defp bfs(paths, graph, [u | tail], neighbors, layer) when is_map_key(paths, u) do
+    bfs(paths, graph, tail, neighbors, layer)
+  end
+
+  # Caso normal: nó ainda não visitado, adiciona ao mapa com a camada e continua
+  defp bfs(paths, graph, [u | tail], neighbors, layer) do
+    Map.put_new(paths, u, layer)
+    |> bfs(graph, tail, MapSet.to_list(graph[u]) ++ neighbors, layer)
+  end
+
+  # Função para expandir os caminhos calculados
+  # paths: mapa de vértices para camadas
+  # n: índice atual
+  # s: índice máximo ou referência
+
+  # Caso base: n = 0
+  defp expand_paths(_, 0, _), do: []
+
+  # Ajusta o índice se n = s
+  defp expand_paths(paths, s, s), do: expand_paths(paths, s - 1, s)
+
+  # Se o nó está no mapa, multiplica a camada por 6
+  defp expand_paths(paths, n, s) when is_map_key(paths, n) do
+    [paths[n] * 6] ++ expand_paths(paths, n - 1, s)
+  end
+
+  # Caso contrário, adiciona -1
+  defp expand_paths(paths, n, s) do
+    [-1] ++ expand_paths(paths, n - 1, s)
   end
 end
