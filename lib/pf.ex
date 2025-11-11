@@ -21,11 +21,16 @@ defmodule Pf do
     if tamanho(mapa) == :ok do
       if aux2(aux(mapa)) == 1 do
         mapa_sem_primeiro = Map.drop(mapa, [0])
-        usar = for {k, _} <- mapa_sem_primeiro do verpossibilidades(mapa, k) end
+
+        usar =
+          for {k, _} <- mapa_sem_primeiro do
+            verpossibilidades(mapa, k)
+          end
+
         if aux2(usar) == 0 do
           "Entrada invalida, letra desconhecida"
         else
-          usar
+          bfs(mapa, &acharvizinhos/1)
         end
       else
         "Entrada invalida, blocos sobrepostos"
@@ -35,13 +40,25 @@ defmodule Pf do
     end
   end
 
+  def acharvizinhos(mapa) do
+    mapa_sem_primeiro = Map.drop(mapa, [0])
+
+    usar =
+      for {k, _} <- mapa_sem_primeiro do
+        verpossibilidades(mapa, k)
+      end
+
+    List.flatten(usar)
+  end
+
   def tamanho(mapa) do
     {x, y} = mapa[0]
     mapa_sem_primeiro = Map.drop(mapa, [0])
 
     Enum.reduce_while(mapa_sem_primeiro, :ok, fn {_, {posix, posiy, largura, altura, _}}, _ ->
-      if String.to_integer(x) < String.to_integer(posix) + String.to_integer(altura) or
-           String.to_integer(y) < String.to_integer(posiy) + String.to_integer(largura) do
+      if String.to_integer(x) + 1< String.to_integer(posix) + String.to_integer(altura) or
+           String.to_integer(y) + 1< String.to_integer(posiy) + String.to_integer(largura) or
+           String.to_integer(posix) <= 0 or String.to_integer(posiy) <= 0 do
         {:halt, :erro}
       else
         {:cont, :ok}
@@ -54,16 +71,20 @@ defmodule Pf do
     mapa_sem_primeiro = Map.drop(mapa, [0])
     mapa_sem_dois = Map.drop(mapa_sem_primeiro, [k])
 
-    Enum.reduce_while(mapa_sem_dois, :ok, fn {_, {posix, posiy, largura, altura, _}}, _ ->
-      if String.to_integer(x) + String.to_integer(altu) <= String.to_integer(posix) or
-           String.to_integer(posix) + String.to_integer(altura) <= String.to_integer(x) or
-           String.to_integer(y) + String.to_integer(larg) <= String.to_integer(posiy) or
-           String.to_integer(posiy) + String.to_integer(largura) <= String.to_integer(y) do
-        {:cont, :xdd}
-      else
-        {:halt, :erro}
-      end
-    end)
+    if map_size(mapa_sem_dois) == 0 do
+      :xdd
+    else
+      Enum.reduce_while(mapa_sem_dois, :ok, fn {_, {posix, posiy, largura, altura, _}}, _ ->
+        if String.to_integer(x) + String.to_integer(altu) <= String.to_integer(posix) or
+             String.to_integer(posix) + String.to_integer(altura) <= String.to_integer(x) or
+             String.to_integer(y) + String.to_integer(larg) <= String.to_integer(posiy) or
+             String.to_integer(posiy) + String.to_integer(largura) <= String.to_integer(y) do
+          {:cont, :xdd}
+        else
+          {:halt, :erro}
+        end
+      end)
+    end
   end
 
   def aux(mapa) do
@@ -99,21 +120,21 @@ defmodule Pf do
         mapax2 = Map.put(mapa2, k, {Integer.to_string(xx - 1), y, xlarg, yaltu, freedom})
         mapay1 = Map.put(mapa2, k, {x, Integer.to_string(yy + 1_000_000), xlarg, yaltu, freedom})
         mapay2 = Map.put(mapa2, k, {x, Integer.to_string(yy - 1_000_000), xlarg, yaltu, freedom})
-        valido(mapax1, mapax2, mapay1, mapay2, k)
+        aux2valido(valido(mapax1, mapax2, mapay1, mapay2, k), [mapax1, mapax2, mapay1, mapay2])
 
       freedom == "h" ->
         mapax1 = Map.put(mapa2, k, {Integer.to_string(xx + 1_000_000), y, xlarg, yaltu, freedom})
         mapax2 = Map.put(mapa2, k, {Integer.to_string(xx - 1_000_000), y, xlarg, yaltu, freedom})
         mapay1 = Map.put(mapa2, k, {x, Integer.to_string(yy + 1), xlarg, yaltu, freedom})
         mapay2 = Map.put(mapa2, k, {x, Integer.to_string(yy - 1), xlarg, yaltu, freedom})
-        valido(mapax1, mapax2, mapay1, mapay2, k)
+        aux2valido(valido(mapax1, mapax2, mapay1, mapay2, k), [mapax1, mapax2, mapay1, mapay2])
 
       freedom == "b" ->
         mapax1 = Map.put(mapa2, k, {Integer.to_string(xx + 1), y, xlarg, yaltu, freedom})
         mapax2 = Map.put(mapa2, k, {Integer.to_string(xx - 1), y, xlarg, yaltu, freedom})
         mapay1 = Map.put(mapa2, k, {x, Integer.to_string(yy + 1), xlarg, yaltu, freedom})
         mapay2 = Map.put(mapa2, k, {x, Integer.to_string(yy - 1), xlarg, yaltu, freedom})
-        valido(mapax1, mapax2, mapay1, mapay2, k)
+        aux2valido(valido(mapax1, mapax2, mapay1, mapay2, k), [mapax1, mapax2, mapay1, mapay2])
 
       true ->
         :erro
@@ -129,57 +150,64 @@ defmodule Pf do
     ]
   end
 
-  def auxvalido(a,k) do
+  def aux2valido([], _) do
+    []
+  end
+
+  def aux2valido([a | t], [h | c]) do
+    if a == :ok do
+      [h | aux2valido(t, c)]
+    else
+      aux2valido(t, c)
+    end
+  end
+
+  def auxvalido(a, k) do
     if a == :ok and k == :xdd do
       :ok
     else
       :noop
     end
   end
-  # Função BFS (Breadth-First Search) para percorrer o grafo
-  # paths: mapa de vértices para a camada em que foram encontrados
-  # graph: mapa de adjacências {nó => vizinhos}
-  # [] lista vazia de nós atuais
-  # neighbors: lista de próximos vizinhos a visitar
-  # layer: profundidade atual da BFS
 
-  # Caso base: nenhum nó para processar e nenhum vizinho restante
-  defp bfs(paths, _, [], [], _), do: paths
+  defp objetivo?(mapa) do
+    {largura, _} = Map.fetch!(mapa, 0)
+    {_, {_, y1, larg1, _, _}} = Enum.find(mapa, fn {k, _} -> k == 1 end)
 
-  # Se não houver nós atuais, mas houver vizinhos para explorar, passa para a próxima camada
-  defp bfs(paths, graph, [], neighbors, layer) do
-    bfs(paths, graph, neighbors, [], layer + 1)
+    largura_tab = String.to_integer(largura)
+    y = String.to_integer(y1)
+    larg = String.to_integer(larg1)
+
+    y + larg == largura_tab + 1
   end
 
-  # Se o nó já está no mapa de caminhos, apenas continua com o restante da lista
-  defp bfs(paths, graph, [u | tail], neighbors, layer) when is_map_key(paths, u) do
-    bfs(paths, graph, tail, neighbors, layer)
+  def bfs(start, graph_fun) do
+    bfs_loop([{start, [start]}], MapSet.new(), graph_fun)
   end
 
-  # Caso normal: nó ainda não visitado, adiciona ao mapa com a camada e continua
-  defp bfs(paths, graph, [u | tail], neighbors, layer) do
-    Map.put_new(paths, u, layer)
-    |> bfs(graph, tail, MapSet.to_list(graph[u]) ++ neighbors, layer)
+  defp bfs_loop([], _visitados, _graph_fun) do
+    IO.puts("Nenhum caminho encontrado.")
+    :sem_caminho
   end
 
-  # Função para expandir os caminhos calculados
-  # paths: mapa de vértices para camadas
-  # n: índice atual
-  # s: índice máximo ou referência
+  defp bfs_loop([{atual, caminho} | fila], visitados, graph_fun) do
+    if objetivo?(atual) do
+      IO.puts("Objetivo encontrado!")
+      # Retorna o percurso do início ao fim
+      {:ok, Enum.reverse(caminho)}
+    else
+      novos_visitados = MapSet.put(visitados, atual)
+      vizinhos = graph_fun.(atual)
 
-  # Caso base: n = 0
-  defp expand_paths(_, 0, _), do: []
+      novos =
+        for v <- vizinhos,
+            not MapSet.member?(visitados, v) do
+          # Guarda o caminho até o vizinho
+          {v, [v | caminho]}
+        end
 
-  # Ajusta o índice se n = s
-  defp expand_paths(paths, s, s), do: expand_paths(paths, s - 1, s)
-
-  # Se o nó está no mapa, multiplica a camada por 6
-  defp expand_paths(paths, n, s) when is_map_key(paths, n) do
-    [paths[n] * 6] ++ expand_paths(paths, n - 1, s)
+      bfs_loop(fila ++ novos, novos_visitados, graph_fun)
+    end
   end
 
-  # Caso contrário, adiciona -1
-  defp expand_paths(paths, n, s) do
-    [-1] ++ expand_paths(paths, n - 1, s)
-  end
 end
