@@ -21,9 +21,10 @@ defmodule Pf do
     if tamanho(mapa) == :ok do
       if aux2(aux(mapa)) == 1 do
         mapa_sem_primeiro = Map.drop(mapa, [0])
-       for {k, _} <- mapa_sem_primeiro do
-      verpossibilidades(mapa, k)
-      end
+
+        for {k, _} <- mapa_sem_primeiro do
+          verpossibilidades(mapa, k)
+        end
       else
         "Entrada invalida, blocos sobrepostos"
       end
@@ -83,26 +84,56 @@ defmodule Pf do
     "tudo certo"
   end
 
-
-  def verpossibilidades(mapa,k) do
+  def verpossibilidades(mapa, k) do
     {x, y, xlarg, yaltu, freedom} = mapa[k]
 
     mapa2 = Map.drop(mapa, [k])
     xx = String.to_integer(x)
     yy = String.to_integer(y)
 
-    mapax1 = Map.put(mapa2,k,{Integer.to_string(xx+1),y,xlarg,yaltu,freedom})
-    mapax2 = Map.put(mapa2,k,{Integer.to_string(xx-1),y,xlarg,yaltu,freedom})
-    mapay1 = Map.put(mapa2,k,{x,Integer.to_string(yy+1),xlarg,yaltu,freedom})
-    mapay2 = Map.put(mapa2,k,{x,Integer.to_string(yy-1),xlarg,yaltu,freedom})
-    valido(mapax1,mapax2,mapay1,mapay2,k)
+    cond do
+      freedom == "v" ->
+        mapax1 = Map.put(mapa2, k, {Integer.to_string(xx + 1), y, xlarg, yaltu, freedom})
+        mapax2 = Map.put(mapa2, k, {Integer.to_string(xx - 1), y, xlarg, yaltu, freedom})
+        mapay1 = Map.put(mapa2, k, {x, Integer.to_string(yy + 1_000_000), xlarg, yaltu, freedom})
+        mapay2 = Map.put(mapa2, k, {x, Integer.to_string(yy - 1_000_000), xlarg, yaltu, freedom})
+        valido(mapax1, mapax2, mapay1, mapay2, k)
+
+      freedom == "h" ->
+        mapax1 = Map.put(mapa2, k, {Integer.to_string(xx + 1_000_000), y, xlarg, yaltu, freedom})
+        mapax2 = Map.put(mapa2, k, {Integer.to_string(xx - 1_000_000), y, xlarg, yaltu, freedom})
+        mapay1 = Map.put(mapa2, k, {x, Integer.to_string(yy + 1), xlarg, yaltu, freedom})
+        mapay2 = Map.put(mapa2, k, {x, Integer.to_string(yy - 1), xlarg, yaltu, freedom})
+        valido(mapax1, mapax2, mapay1, mapay2, k)
+
+      freedom == "b" ->
+        mapax1 = Map.put(mapa2, k, {Integer.to_string(xx + 1), y, xlarg, yaltu, freedom})
+        mapax2 = Map.put(mapa2, k, {Integer.to_string(xx - 1), y, xlarg, yaltu, freedom})
+        mapay1 = Map.put(mapa2, k, {x, Integer.to_string(yy + 1), xlarg, yaltu, freedom})
+        mapay2 = Map.put(mapa2, k, {x, Integer.to_string(yy - 1), xlarg, yaltu, freedom})
+        valido(mapax1, mapax2, mapay1, mapay2, k)
+
+      true ->
+        IO.puts("freedom errado")
+    end
   end
 
-  def valido(mapax1,mapax2,mapay1,mapay2,k) do
-    [{tamanho(mapax1),oresto(mapax1,k)},{tamanho(mapax2),oresto(mapax2,k)},{tamanho(mapay1),oresto(mapay1,k)},{tamanho(mapay2),oresto(mapay2,k)}]
+  def valido(mapax1, mapax2, mapay1, mapay2, k) do
+    [
+      {tamanho(mapax1), oresto(mapax1, k)},
+      {tamanho(mapax2), oresto(mapax2, k)},
+      {tamanho(mapay1), oresto(mapay1, k)},
+      {tamanho(mapay2), oresto(mapay2, k)}
+    ]
   end
 
-
+  def auxvalido(a,k) do
+    if a == :ok and k == :xdd do
+      :ok
+    else
+      :noop
+    end
+  end
   # Função BFS (Breadth-First Search) para percorrer o grafo
   # paths: mapa de vértices para a camada em que foram encontrados
   # graph: mapa de adjacências {nó => vizinhos}
