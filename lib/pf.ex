@@ -20,7 +20,10 @@ defmodule Pf do
   def validade(mapa) do
     if tamanho(mapa) == :ok do
       if aux2(aux(mapa)) == 1 do
-        proximopasso()
+        mapa_sem_primeiro = Map.drop(mapa, [0])
+       for {k, _} <- mapa_sem_primeiro do
+      verpossibilidades(mapa, k)
+      end
       else
         "Entrada invalida, blocos sobrepostos"
       end
@@ -44,15 +47,15 @@ defmodule Pf do
   end
 
   def oresto(mapa, k) do
-    {x, y, xlarg, yaltu, _} = mapa[k]
+    {x, y, larg, altu, _} = mapa[k]
     mapa_sem_primeiro = Map.drop(mapa, [0])
     mapa_sem_dois = Map.drop(mapa_sem_primeiro, [k])
 
     Enum.reduce_while(mapa_sem_dois, :ok, fn {_, {posix, posiy, largura, altura, _}}, _ ->
-      if String.to_integer(x) + String.to_integer(xlarg) <= String.to_integer(posix) or
-           String.to_integer(posix) + String.to_integer(largura) <= String.to_integer(x) or
-           String.to_integer(y) + String.to_integer(yaltu) <= String.to_integer(posiy) or
-           String.to_integer(posiy) + String.to_integer(altura) <= String.to_integer(y) do
+      if String.to_integer(x) + String.to_integer(altu) <= String.to_integer(posix) or
+           String.to_integer(posix) + String.to_integer(altura) <= String.to_integer(x) or
+           String.to_integer(y) + String.to_integer(larg) <= String.to_integer(posiy) or
+           String.to_integer(posiy) + String.to_integer(largura) <= String.to_integer(y) do
         {:cont, :xdd}
       else
         {:halt, :erro}
@@ -79,6 +82,26 @@ defmodule Pf do
   def proximopasso() do
     "tudo certo"
   end
+
+
+  def verpossibilidades(mapa,k) do
+    {x, y, xlarg, yaltu, freedom} = mapa[k]
+
+    mapa2 = Map.drop(mapa, [k])
+    xx = String.to_integer(x)
+    yy = String.to_integer(y)
+
+    mapax1 = Map.put(mapa2,k,{Integer.to_string(xx+1),y,xlarg,yaltu,freedom})
+    mapax2 = Map.put(mapa2,k,{Integer.to_string(xx-1),y,xlarg,yaltu,freedom})
+    mapay1 = Map.put(mapa2,k,{x,Integer.to_string(yy+1),xlarg,yaltu,freedom})
+    mapay2 = Map.put(mapa2,k,{x,Integer.to_string(yy-1),xlarg,yaltu,freedom})
+    valido(mapax1,mapax2,mapay1,mapay2,k)
+  end
+
+  def valido(mapax1,mapax2,mapay1,mapay2,k) do
+    [{tamanho(mapax1),oresto(mapax1,k)},{tamanho(mapax2),oresto(mapax2,k)},{tamanho(mapay1),oresto(mapay1,k)},{tamanho(mapay2),oresto(mapay2,k)}]
+  end
+
 
   # Função BFS (Breadth-First Search) para percorrer o grafo
   # paths: mapa de vértices para a camada em que foram encontrados
