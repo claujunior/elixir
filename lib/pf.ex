@@ -21,9 +21,11 @@ defmodule Pf do
     if tamanho(mapa) == :ok do
       if aux2(aux(mapa)) == 1 do
         mapa_sem_primeiro = Map.drop(mapa, [0])
-
-        for {k, _} <- mapa_sem_primeiro do
-          verpossibilidades(mapa, k)
+        usar = for {k, _} <- mapa_sem_primeiro do verpossibilidades(mapa, k) end
+        if aux2(usar) == 0 do
+          "Entrada invalida, letra desconhecida"
+        else
+          usar
         end
       else
         "Entrada invalida, blocos sobrepostos"
@@ -114,16 +116,16 @@ defmodule Pf do
         valido(mapax1, mapax2, mapay1, mapay2, k)
 
       true ->
-        IO.puts("freedom errado")
+        :erro
     end
   end
 
   def valido(mapax1, mapax2, mapay1, mapay2, k) do
     [
-      {tamanho(mapax1), oresto(mapax1, k)},
-      {tamanho(mapax2), oresto(mapax2, k)},
-      {tamanho(mapay1), oresto(mapay1, k)},
-      {tamanho(mapay2), oresto(mapay2, k)}
+      auxvalido(tamanho(mapax1), oresto(mapax1, k)),
+      auxvalido(tamanho(mapax2), oresto(mapax2, k)),
+      auxvalido(tamanho(mapay1), oresto(mapay1, k)),
+      auxvalido(tamanho(mapay2), oresto(mapay2, k))
     ]
   end
 
