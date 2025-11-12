@@ -26,21 +26,24 @@ defmodule Pf do
 
       novo = Map.merge(mapa, kkk)
 
-      if x < 100 and y < 100 do
-        if map_size(mapa) <= 128 do
-          validade(novo)
-        else
-          "Entrada Invalida, blocos ultrapassam a quantidade permitida"
-        end
-      else
-        "Entrada Invalida, tamanho do tabuleiro excede o permitido"
-      end
+      checar_valores(String.to_integer(x), String.to_integer(y),mapa,novo)
     rescue
       e in File.Error ->
         IO.puts("Erro ao abrir o arquivo: #{e.reason}")
     end
   end
+  def checar_valores(x, y, mapa, novo) do
+  cond do
+    x >= 100 or y >= 100 ->
+      "Entrada inválida: tamanho do tabuleiro excede o permitido"
 
+    map_size(mapa) > 128 ->
+      "Entrada inválida: blocos ultrapassam a quantidade permitida"
+
+    true ->
+      validade(novo)
+  end
+end
   def validade(mapa) do
     if tamanho(mapa) == :ok do
       if aux2(aux(mapa)) == 1 do
@@ -54,7 +57,7 @@ defmodule Pf do
         if aux2(usar) == 0 do
           "Entrada invalida, letra desconhecida"
         else
-          bfs(mapa, &acharvizinhos/1)
+          bfs(mapa, &acharvizinhos/1,&objetivo/1)
         end
       else
         "Entrada invalida, blocos sobrepostos"
@@ -142,13 +145,13 @@ defmodule Pf do
       freedom == "v" ->
         mapax1 = Map.put(mapa2, k, {xx + 1, y, xlarg, yaltu, freedom})
         mapax2 = Map.put(mapa2, k, {xx - 1, y, xlarg, yaltu, freedom})
-        mapay1 = Map.put(mapa2, k, {x, yy + 1_000_000, xlarg, yaltu, freedom})
-        mapay2 = Map.put(mapa2, k, {x, yy - 1_000_000, xlarg, yaltu, freedom})
+        mapay1 = Map.put(mapa2, k, {x, yy + 10000, xlarg, yaltu, freedom})
+        mapay2 = Map.put(mapa2, k, {x, yy - 10000, xlarg, yaltu, freedom})
         aux2valido(valido(mapax1, mapax2, mapay1, mapay2, k), [mapax1, mapax2, mapay1, mapay2])
 
       freedom == "h" ->
-        mapax1 = Map.put(mapa2, k, {xx + 1_000_000, y, xlarg, yaltu, freedom})
-        mapax2 = Map.put(mapa2, k, {xx - 1_000_000, y, xlarg, yaltu, freedom})
+        mapax1 = Map.put(mapa2, k, {xx + 10000, y, xlarg, yaltu, freedom})
+        mapax2 = Map.put(mapa2, k, {xx - 10000, y, xlarg, yaltu, freedom})
         mapay1 = Map.put(mapa2, k, {x, yy + 1, xlarg, yaltu, freedom})
         mapay2 = Map.put(mapa2, k, {x, yy - 1, xlarg, yaltu, freedom})
         aux2valido(valido(mapax1, mapax2, mapay1, mapay2, k), [mapax1, mapax2, mapay1, mapay2])
@@ -194,42 +197,49 @@ defmodule Pf do
     end
   end
 
-  defp objetivo?(mapa) do
+  defp objetivo(mapa) do
     {largura, _} = Map.fetch!(mapa, 0)
     {_, {_, y1, larg1, _, _}} = Enum.find(mapa, fn {k, _} -> k == 1 end)
 
     y1 + larg1 == largura + 1
   end
 
-  def bfs(start, graph_fun) do
-    bfs_loop(:queue.from_list([{start, [start]}]), MapSet.new([start]), graph_fun)
+    # Função pública
+  def bfs(start, graph_fun, objetivo_fun) do
+    queue = :queue.from_list([{start, [start]}])
+    visitados = MapSet.new([start])
+
+    bfs_loop(queue, visitados, graph_fun, objetivo_fun)
   end
 
-  defp bfs_loop(queue, visitados, graph_fun) do
+  # Loop principal do BFS
+  defp bfs_loop(queue, visitados, graph_fun, objetivo_fun) do
     case :queue.out(queue) do
       {:empty, _} ->
-        IO.puts("Nenhum caminho encontrado.")
         :sem_caminho
 
       {{:value, {atual, caminho}}, resto} ->
-        if objetivo?(atual) do
-          IO.puts("Objetivo encontrado!")
+        # Checa se o objetivo foi alcançado
+        if objetivo_fun.(atual) do
           {:ok, Enum.reverse(caminho)}
         else
+          # Gera vizinhos e filtra os já visitados
           {novos_visitados, novos_nos} =
-            graph_fun.(atual)
-            |> Enum.reduce({visitados, []}, fn v, {vis, acc} ->
-              if MapSet.member?(vis, v) do
-                {vis, acc}
-              else
-                {MapSet.put(vis, v), [{v, [v | caminho]} | acc]}
-              end
-            end)
+            for v <- graph_fun.(atual), reduce: {visitados, []} do
+              {vis, acc} ->
+                if MapSet.member?(vis, v) do
+                  {vis, acc}
+                else
+                  {MapSet.put(vis, v), [{v, [v | caminho]} | acc]}
+                end
+            end
 
+          # Adiciona nós novos à fila e continua
           bfs_loop(
             :queue.join(resto, :queue.from_list(Enum.reverse(novos_nos))),
             novos_visitados,
-            graph_fun
+            graph_fun,
+            objetivo_fun
           )
         end
     end
