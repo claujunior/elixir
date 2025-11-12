@@ -10,7 +10,22 @@ defmodule Pf do
         |> Enum.map(fn {linha, idx} -> {idx, List.to_tuple(linha)} end)
         |> Enum.into(%{})
 
-      validade(map_linhas)
+      {x, y} = map_linhas[0]
+      mapa_sem_zero = Map.drop(map_linhas, [0])
+      mapa = %{0 => {String.to_integer(x), String.to_integer(y)}}
+
+
+      kkk =
+        Enum.reduce(mapa_sem_zero, mapa, fn {k, {x1, y1, larg, alti, b}}, acc ->
+          Map.put(
+            acc,
+            k,
+            {String.to_integer(x1), String.to_integer(y1), String.to_integer(larg),
+             String.to_integer(alti),b}
+          )
+        end)
+      novo = Map.merge(mapa, kkk)
+      validade(novo)
     rescue
       e in File.Error ->
         IO.puts("Erro ao abrir o arquivo: #{e.reason}")
@@ -56,9 +71,9 @@ defmodule Pf do
     mapa_sem_primeiro = Map.drop(mapa, [0])
 
     Enum.reduce_while(mapa_sem_primeiro, :ok, fn {_, {posix, posiy, largura, altura, _}}, _ ->
-      if String.to_integer(x) + 1< String.to_integer(posix) + String.to_integer(altura) or
-           String.to_integer(y) + 1< String.to_integer(posiy) + String.to_integer(largura) or
-           String.to_integer(posix) <= 0 or String.to_integer(posiy) <= 0 do
+      if x + 1 < posix + altura or
+           y + 1 < posiy + largura or
+           posix <= 0 or posiy <= 0 do
         {:halt, :erro}
       else
         {:cont, :ok}
@@ -75,10 +90,10 @@ defmodule Pf do
       :xdd
     else
       Enum.reduce_while(mapa_sem_dois, :ok, fn {_, {posix, posiy, largura, altura, _}}, _ ->
-        if String.to_integer(x) + String.to_integer(altu) <= String.to_integer(posix) or
-             String.to_integer(posix) + String.to_integer(altura) <= String.to_integer(x) or
-             String.to_integer(y) + String.to_integer(larg) <= String.to_integer(posiy) or
-             String.to_integer(posiy) + String.to_integer(largura) <= String.to_integer(y) do
+        if x + altu <= posix or
+             posix + altura <= x or
+             y + larg <= posiy or
+             posiy + largura <= y do
           {:cont, :xdd}
         else
           {:halt, :erro}
@@ -111,29 +126,29 @@ defmodule Pf do
     {x, y, xlarg, yaltu, freedom} = mapa[k]
 
     mapa2 = Map.drop(mapa, [k])
-    xx = String.to_integer(x)
-    yy = String.to_integer(y)
+    xx = x
+    yy = y
 
     cond do
       freedom == "v" ->
-        mapax1 = Map.put(mapa2, k, {Integer.to_string(xx + 1), y, xlarg, yaltu, freedom})
-        mapax2 = Map.put(mapa2, k, {Integer.to_string(xx - 1), y, xlarg, yaltu, freedom})
-        mapay1 = Map.put(mapa2, k, {x, Integer.to_string(yy + 1_000_000), xlarg, yaltu, freedom})
-        mapay2 = Map.put(mapa2, k, {x, Integer.to_string(yy - 1_000_000), xlarg, yaltu, freedom})
+        mapax1 = Map.put(mapa2, k, {xx + 1, y, xlarg, yaltu, freedom})
+        mapax2 = Map.put(mapa2, k, {xx - 1, y, xlarg, yaltu, freedom})
+        mapay1 = Map.put(mapa2, k, {x, yy + 1_000_000, xlarg, yaltu, freedom})
+        mapay2 = Map.put(mapa2, k, {x, yy - 1_000_000, xlarg, yaltu, freedom})
         aux2valido(valido(mapax1, mapax2, mapay1, mapay2, k), [mapax1, mapax2, mapay1, mapay2])
 
       freedom == "h" ->
-        mapax1 = Map.put(mapa2, k, {Integer.to_string(xx + 1_000_000), y, xlarg, yaltu, freedom})
-        mapax2 = Map.put(mapa2, k, {Integer.to_string(xx - 1_000_000), y, xlarg, yaltu, freedom})
-        mapay1 = Map.put(mapa2, k, {x, Integer.to_string(yy + 1), xlarg, yaltu, freedom})
-        mapay2 = Map.put(mapa2, k, {x, Integer.to_string(yy - 1), xlarg, yaltu, freedom})
+        mapax1 = Map.put(mapa2, k, {xx + 1_000_000, y, xlarg, yaltu, freedom})
+        mapax2 = Map.put(mapa2, k, {xx - 1_000_000, y, xlarg, yaltu, freedom})
+        mapay1 = Map.put(mapa2, k, {x, yy + 1, xlarg, yaltu, freedom})
+        mapay2 = Map.put(mapa2, k, {x, yy - 1, xlarg, yaltu, freedom})
         aux2valido(valido(mapax1, mapax2, mapay1, mapay2, k), [mapax1, mapax2, mapay1, mapay2])
 
       freedom == "b" ->
-        mapax1 = Map.put(mapa2, k, {Integer.to_string(xx + 1), y, xlarg, yaltu, freedom})
-        mapax2 = Map.put(mapa2, k, {Integer.to_string(xx - 1), y, xlarg, yaltu, freedom})
-        mapay1 = Map.put(mapa2, k, {x, Integer.to_string(yy + 1), xlarg, yaltu, freedom})
-        mapay2 = Map.put(mapa2, k, {x, Integer.to_string(yy - 1), xlarg, yaltu, freedom})
+        mapax1 = Map.put(mapa2, k, {xx + 1, y, xlarg, yaltu, freedom})
+        mapax2 = Map.put(mapa2, k, {xx - 1, y, xlarg, yaltu, freedom})
+        mapay1 = Map.put(mapa2, k, {x, yy + 1, xlarg, yaltu, freedom})
+        mapay2 = Map.put(mapa2, k, {x, yy - 1, xlarg, yaltu, freedom})
         aux2valido(valido(mapax1, mapax2, mapay1, mapay2, k), [mapax1, mapax2, mapay1, mapay2])
 
       true ->
@@ -174,40 +189,37 @@ defmodule Pf do
     {largura, _} = Map.fetch!(mapa, 0)
     {_, {_, y1, larg1, _, _}} = Enum.find(mapa, fn {k, _} -> k == 1 end)
 
-    largura_tab = String.to_integer(largura)
-    y = String.to_integer(y1)
-    larg = String.to_integer(larg1)
-
-    y + larg == largura_tab + 1
+    y1 + larg1 == largura + 1
   end
 
   def bfs(start, graph_fun) do
-    bfs_loop([{start, [start]}], MapSet.new(), graph_fun)
+  bfs_loop(:queue.from_list([{start, [start]}]), MapSet.new([start]), graph_fun)
+end
+
+defp bfs_loop(queue, visitados, graph_fun) do
+  case :queue.out(queue) do
+    {:empty, _} ->
+      IO.puts("Nenhum caminho encontrado.")
+      :sem_caminho
+
+    {{:value, {atual, caminho}}, resto} ->
+      if objetivo?(atual) do
+        IO.puts("Objetivo encontrado!")
+        {:ok, Enum.reverse(caminho)}
+      else
+        {novos_visitados, novos_nos} =
+          graph_fun.(atual)
+          |> Enum.reduce({visitados, []}, fn v, {vis, acc} ->
+            if MapSet.member?(vis, v) do
+              {vis, acc}
+            else
+              {MapSet.put(vis, v), [{v, [v | caminho]} | acc]}
+            end
+          end)
+
+        bfs_loop(:queue.join(resto, :queue.from_list(Enum.reverse(novos_nos))), novos_visitados, graph_fun)
+      end
   end
-
-  defp bfs_loop([], _visitados, _graph_fun) do
-    IO.puts("Nenhum caminho encontrado.")
-    :sem_caminho
-  end
-
-  defp bfs_loop([{atual, caminho} | fila], visitados, graph_fun) do
-    if objetivo?(atual) do
-      IO.puts("Objetivo encontrado!")
-      # Retorna o percurso do início ao fim
-      {:ok, Enum.reverse(caminho)}
-    else
-      novos_visitados = MapSet.put(visitados, atual)
-      vizinhos = graph_fun.(atual)
-
-      novos =
-        for v <- vizinhos,
-            not MapSet.member?(visitados, v) do
-          # Guarda o caminho até o vizinho
-          {v, [v | caminho]}
-        end
-
-      bfs_loop(fila ++ novos, novos_visitados, graph_fun)
-    end
-  end
+end
 
 end
