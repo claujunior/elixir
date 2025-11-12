@@ -14,18 +14,27 @@ defmodule Pf do
       mapa_sem_zero = Map.drop(map_linhas, [0])
       mapa = %{0 => {String.to_integer(x), String.to_integer(y)}}
 
-
       kkk =
         Enum.reduce(mapa_sem_zero, mapa, fn {k, {x1, y1, larg, alti, b}}, acc ->
           Map.put(
             acc,
             k,
             {String.to_integer(x1), String.to_integer(y1), String.to_integer(larg),
-             String.to_integer(alti),b}
+             String.to_integer(alti), b}
           )
         end)
+
       novo = Map.merge(mapa, kkk)
-      validade(novo)
+
+      if x < 100 and y < 100 do
+        if map_size(mapa) <= 128 do
+          validade(novo)
+        else
+          "Entrada Invalida, blocos ultrapassam a quantidade permitida"
+        end
+      else
+        "Entrada Invalida, tamanho do tabuleiro excede o permitido"
+      end
     rescue
       e in File.Error ->
         IO.puts("Erro ao abrir o arquivo: #{e.reason}")
@@ -193,33 +202,36 @@ defmodule Pf do
   end
 
   def bfs(start, graph_fun) do
-  bfs_loop(:queue.from_list([{start, [start]}]), MapSet.new([start]), graph_fun)
-end
-
-defp bfs_loop(queue, visitados, graph_fun) do
-  case :queue.out(queue) do
-    {:empty, _} ->
-      IO.puts("Nenhum caminho encontrado.")
-      :sem_caminho
-
-    {{:value, {atual, caminho}}, resto} ->
-      if objetivo?(atual) do
-        IO.puts("Objetivo encontrado!")
-        {:ok, Enum.reverse(caminho)}
-      else
-        {novos_visitados, novos_nos} =
-          graph_fun.(atual)
-          |> Enum.reduce({visitados, []}, fn v, {vis, acc} ->
-            if MapSet.member?(vis, v) do
-              {vis, acc}
-            else
-              {MapSet.put(vis, v), [{v, [v | caminho]} | acc]}
-            end
-          end)
-
-        bfs_loop(:queue.join(resto, :queue.from_list(Enum.reverse(novos_nos))), novos_visitados, graph_fun)
-      end
+    bfs_loop(:queue.from_list([{start, [start]}]), MapSet.new([start]), graph_fun)
   end
-end
 
+  defp bfs_loop(queue, visitados, graph_fun) do
+    case :queue.out(queue) do
+      {:empty, _} ->
+        IO.puts("Nenhum caminho encontrado.")
+        :sem_caminho
+
+      {{:value, {atual, caminho}}, resto} ->
+        if objetivo?(atual) do
+          IO.puts("Objetivo encontrado!")
+          {:ok, Enum.reverse(caminho)}
+        else
+          {novos_visitados, novos_nos} =
+            graph_fun.(atual)
+            |> Enum.reduce({visitados, []}, fn v, {vis, acc} ->
+              if MapSet.member?(vis, v) do
+                {vis, acc}
+              else
+                {MapSet.put(vis, v), [{v, [v | caminho]} | acc]}
+              end
+            end)
+
+          bfs_loop(
+            :queue.join(resto, :queue.from_list(Enum.reverse(novos_nos))),
+            novos_visitados,
+            graph_fun
+          )
+        end
+    end
+  end
 end
