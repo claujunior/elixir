@@ -141,9 +141,6 @@ defmodule Pf do
     end
   end
 
-  def proximopasso() do
-    "tudo certo"
-  end
 
   def verpossibilidades(mapa, k) do
     {x, y, xlarg, yaltu, freedom} = mapa[k]
