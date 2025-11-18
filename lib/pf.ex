@@ -232,11 +232,11 @@ defmodule Pf do
         :sem_caminho
 
       {{:value, {atual, caminho}}, resto} ->
-        # Checa se o objetivo foi alcançado
+
         if objetivo_fun.(atual) do
           {:ok, Enum.reverse(caminho)}
         else
-          # Gera vizinhos e filtra os já visitados
+
           {novos_visitados, novos_nos} =
             for v <- graph_fun.(atual), reduce: {visitados, []} do
               {vis, acc} ->
@@ -247,7 +247,6 @@ defmodule Pf do
                 end
             end
 
-          # Adiciona nós novos à fila e continua
           bfs_loop(
             :queue.join(resto, :queue.from_list(Enum.reverse(novos_nos))),
             novos_visitados,
@@ -275,4 +274,31 @@ defmodule Pf do
             end
           end)
   end
+
+  def listas([a|t]) do
+    listas(a,l)
+  end
+  def listas(_,[]) do
+    []
+  end
+  def listas(a,[k|t]) do
+    xampra(a,k)
+  end
+  def xampra(a, k) do
+  mapaa = Map.drop(a, [0])
+  mapak = Map.drop(k, [0])
+
+  Enum.reduce_while(mapaa, :ok, fn {key, {x2, y2, _, _, _}}, _ ->
+    case Map.fetch(mapak, key) do
+      {:ok, {x_b, y_b, _, _, _}} ->
+
+        if x2 == x_b && y2 == y_b do
+          {:cont, :ok}
+        else
+          {:halt, [{x2, y2}, {x_b, y_b}]}
+        end
+    end
+  end)
+end
+
 end
