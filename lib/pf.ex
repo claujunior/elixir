@@ -59,7 +59,7 @@ defmodule Pf do
         if tem_erro(usar) == 0 do
           "Entrada invalida, letra desconhecida"
         else
-          bfs(mapa, &acharvizinhos/1, &objetivo/1)
+          bfs(mapa, &acharvizinhos/1, &objetivo/1) |> listas() |> compactar()
         end
       else
         "Entrada invalida, blocos sobrepostos"
@@ -275,14 +275,20 @@ defmodule Pf do
           end)
   end
 
-  def listas([a|t]) do
-    listas(a,l)
+
+  def listas({_,[a|t]}) do
+    listas(a,t)
   end
-  def listas(_,[]) do
-    []
+  def listas(a,k,[]) do
+     [kafka(xampra(a,k))]
+
   end
   def listas(a,[k|t]) do
-    xampra(a,k)
+    listas(a,k,t)
+  end
+  def listas(a,k,[p|t]) do
+     [kafka(xampra(a,k))|listas(k,p,t)]
+
   end
   def xampra(a, k) do
   mapaa = Map.drop(a, [0])
@@ -292,13 +298,49 @@ defmodule Pf do
     case Map.fetch(mapak, key) do
       {:ok, {x_b, y_b, _, _, _}} ->
 
-        if x2 == x_b && y2 == y_b do
+        if x2 == x_b and y2 == y_b do
           {:cont, :ok}
         else
-          {:halt, [{x2, y2}, {x_b, y_b}]}
+          {:halt, {x2, y2, x_b, y_b,key}}
         end
     end
   end)
 end
+  def kafka({x1,y1,x2,y2,k}) do
+    cond do
+      x1 > x2 ->
+        "Move block #{k} NORTH, 1 step"
+
+      x2 > x1 ->
+         "Move block #{k} SOUTH, 1 step"
+
+      y1 > y2 ->
+         "Move block #{k} WEST, 1 step"
+
+      y2 > y1 ->
+         "Move block #{k} EAST, 1 step"
+
+    end
+  end
+  def compactar(lista) do
+  lista
+  |> Enum.chunk_by(fn x ->
+    String.replace_suffix(x, "1 step", "")   # ignora o número do passo
+  end)
+  |> Enum.map(fn grupo ->
+    base = String.replace_suffix(hd(grupo), "1 step", "")
+    count = length(grupo)
+
+    passos =
+      if count == 1 do
+        "1 step"
+      else
+        "#{count} steps"
+      end
+
+    base <> passos
+  end)
+end
+
 
 end
