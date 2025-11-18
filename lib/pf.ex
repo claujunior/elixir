@@ -59,7 +59,7 @@ defmodule Pf do
         if tem_erro(usar) == 0 do
           "Entrada invalida, letra desconhecida"
         else
-          bfs(mapa, &acharvizinhos/1, &objetivo/1) |> listas() |> compactar()
+          bfs(mapa, &acharvizinhos/1, &objetivo/1) |> listas() |> compactar()|> ioput()
         end
       else
         "Entrada invalida, blocos sobrepostos"
@@ -341,6 +341,12 @@ end
     base <> passos
   end)
 end
-
+def ioput([]) do
+  IO.puts("Deu certo!!!")
+end
+ def ioput ([a|t]) do
+  IO.puts(a)
+  ioput(t)
+ end
 
 end
