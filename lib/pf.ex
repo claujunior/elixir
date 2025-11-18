@@ -48,7 +48,7 @@ defmodule Pf do
 
   def validade(mapa) do
     if tamanho(mapa) == :ok do
-      if aux2(aux(mapa)) == 1 do
+      if tem_erro(blocos_sobre(mapa)) == 1 do
         mapa_sem_primeiro = Map.drop(mapa, [0])
 
         usar =
@@ -56,7 +56,7 @@ defmodule Pf do
             verpossibilidades(mapa, k)
           end
 
-        if aux2(usar) == 0 do
+        if tem_erro(usar) == 0 do
           "Entrada invalida, letra desconhecida"
         else
           bfs(mapa, &acharvizinhos/1, &objetivo/1)
@@ -125,7 +125,7 @@ defmodule Pf do
     end
   end
 
-  def aux(mapa) do
+  def blocos_sobre(mapa) do
     mapa_sem_zero = Map.drop(mapa, [0])
 
     Enum.map(mapa_sem_zero, fn {k, _} ->
@@ -133,7 +133,7 @@ defmodule Pf do
     end)
   end
 
-  def aux2(l) do
+  def tem_erro(l) do
     if Enum.member?(l, :erro) do
       0
     else
@@ -183,10 +183,10 @@ defmodule Pf do
     mapayy2 = Map.drop(mapay2, [0])
 
     [
-      auxvalido(tamanho(mapax1), oresto(mapaxx1, k)),
-      auxvalido(tamanho(mapax2), oresto(mapaxx2, k)),
-      auxvalido(tamanho(mapay1), oresto(mapayy1, k)),
-      auxvalido(tamanho(mapay2), oresto(mapayy2, k))
+      auxvalido(tamanho(mapax1), oresto1(mapaxx1, k)),
+      auxvalido(tamanho(mapax2), oresto1(mapaxx2, k)),
+      auxvalido(tamanho(mapay1), oresto1(mapayy1, k)),
+      auxvalido(tamanho(mapay2), oresto1(mapayy2, k))
     ]
   end
 
@@ -256,5 +256,23 @@ defmodule Pf do
           )
         end
     end
+  end
+
+
+  def oresto1(mapa, k) do
+
+      {x, y, larg, altu, _} = mapa[k]
+        mapa_sem_k = Map.drop(mapa, [k])
+
+          Enum.reduce_while(mapa_sem_k, :ok, fn {_, {x2, y2, larg2, altu2, _}}, _ ->
+            if x + larg <= x2 or
+                 x2 + larg2 <= x or
+                 y + altu <= y2 or
+                 y2 + altu2 <= y do
+              {:cont, :ok}
+            else
+              {:halt, :erro}
+            end
+          end)
   end
 end
