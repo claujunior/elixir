@@ -1,9 +1,9 @@
 defmodule Pf do
-  def lerdados(dados) do
+  def ler_dados(caminho_arquivo) do
     try do
-      stream = File.stream!(dados, [], :line)
+      stream = File.stream!(caminho_arquivo, [], :line)
 
-      map_linhas =
+      linhas_map =
         Stream.map(stream, &String.trim/1)
         |> Stream.reject(&(&1 == ""))
         |> Stream.map(&String.split/1)
@@ -11,11 +11,11 @@ defmodule Pf do
         |> Enum.map(fn {linha, idx} -> {idx, List.to_tuple(linha)} end)
         |> Enum.into(%{})
 
-      {x, y} = map_linhas[0]
-      mapa_sem_zero = Map.drop(map_linhas, [0])
+      {x, y} = linhas_map[0]
+      mapa_sem_zero = Map.drop(linhas_map, [0])
       mapa = %{0 => {String.to_integer(x), String.to_integer(y)}}
 
-      kkk =
+      blocos_processados =
         Enum.reduce(mapa_sem_zero, mapa, fn {k, {x1, y1, larg, alti, b}}, acc ->
           Map.put(
             acc,
@@ -25,41 +25,44 @@ defmodule Pf do
           )
         end)
 
-      novo = Map.merge(mapa, kkk)
-      checar_valores(String.to_integer(x), String.to_integer(y), novo)
+      mapa_final = Map.merge(mapa, blocos_processados)
+      checar_valores(String.to_integer(x), String.to_integer(y), mapa_final)
     rescue
       e in File.Error ->
         IO.puts("Erro ao abrir o arquivo: #{e.reason}")
     end
   end
 
-  def checar_valores(x, y, mapa) do
+  def checar_valores(largura_tab, altura_tab, mapa) do
     cond do
-      x >= 100 or y >= 100 ->
+      largura_tab >= 100 or altura_tab >= 100 ->
         "Entrada inválida: tamanho do tabuleiro excede o permitido"
 
       map_size(mapa) > 128 ->
         "Entrada inválida: blocos ultrapassam a quantidade permitida"
 
       true ->
-        validade(mapa)
+        validar_mapa(mapa)
     end
   end
 
-  def validade(mapa) do
-    if tamanho(mapa) == :ok do
-      if tem_erro(blocos_sobre(mapa)) == 1 do
-        mapa_sem_primeiro = Map.drop(mapa, [0])
+  def validar_mapa(mapa) do
+    if tamanho_valido(mapa) == :ok do
+      if existe_sobreposicao(blocos_sobrepostos(mapa)) == 1 do
+        mapa_sem_tabuleiro = Map.drop(mapa, [0])
 
-        usar =
-          for {k, _} <- mapa_sem_primeiro do
-            verpossibilidades(mapa, k)
+        possibilidades =
+          for {k, _} <- mapa_sem_tabuleiro do
+            gerar_movimentos(mapa, k)
           end
 
-        if tem_erro(usar) == 0 do
+        if existe_sobreposicao(possibilidades) == 0 do
           "Entrada invalida, letra desconhecida"
         else
-          bfs(mapa, &acharvizinhos/1, &objetivo/1) |> listas() |> compactar()|> ioput()
+          bfs(mapa, &achar_vizinhos/1, &objetivo_alcancado?/1)
+          |> gerar_lista_de_passos()
+          |> compactar_passos()
+          |> imprimir_saida()
         end
       else
         "Entrada invalida, blocos sobrepostos"
@@ -69,25 +72,23 @@ defmodule Pf do
     end
   end
 
-  def acharvizinhos(mapa) do
-    mapa_sem_primeiro = Map.drop(mapa, [0])
+  def achar_vizinhos(mapa) do
+    mapa_sem_tabuleiro = Map.drop(mapa, [0])
 
-    usar =
-      for {k, _} <- mapa_sem_primeiro do
-        verpossibilidades(mapa, k)
+    movimentos =
+      for {k, _} <- mapa_sem_tabuleiro do
+        gerar_movimentos(mapa, k)
       end
 
-    List.flatten(usar)
+    List.flatten(movimentos)
   end
 
-  def tamanho(mapa) do
-    {x, y} = mapa[0]
-    mapa_sem_primeiro = Map.drop(mapa, [0])
+  def tamanho_valido(mapa) do
+    {larg, alt} = mapa[0]
+    mapa_sem_tabuleiro = Map.drop(mapa, [0])
 
-    Enum.reduce_while(mapa_sem_primeiro, :ok, fn {_, {posix, posiy, largura, altura, _}}, _ ->
-      if x + 1 < posix + altura or
-           y + 1 < posiy + largura or
-           posix <= 0 or posiy <= 0 do
+    Enum.reduce_while(mapa_sem_tabuleiro, :ok, fn {_, {x, y, largura, altura, _}}, _ ->
+      if larg + 1 < x + altura or alt + 1 < y + largura or x <= 0 or y <= 0 do
         {:halt, :erro}
       else
         {:cont, :ok}
@@ -95,23 +96,16 @@ defmodule Pf do
     end)
   end
 
-  def oresto(mapa, _) when map_size(mapa) <= 1 do
-    :ok
-  end
-  def oresto(mapa, k) do
+  def restante(mapa, _) when map_size(mapa) <= 1, do: :ok
+  def restante(mapa, k) do
     case Map.get(mapa, k) do
-      nil ->
-        :ok
-
-      {x, y, larg, altu, _} ->
+      nil -> :ok
+      {x, y, larg, alt, _} ->
         mapa_sem_k = Map.drop(mapa, [k])
 
         resultado =
-          Enum.reduce_while(mapa_sem_k, :ok, fn {_, {x2, y2, larg2, altu2, _}}, _ ->
-            if x + larg <= x2 or
-                 x2 + larg2 <= x or
-                 y + altu <= y2 or
-                 y2 + altu2 <= y do
+          Enum.reduce_while(mapa_sem_k, :ok, fn {_, {x2, y2, larg2, alt2, _}}, _ ->
+            if x + larg <= x2 or x2 + larg2 <= x or y + alt <= y2 or y2 + alt2 <= y do
               {:cont, :ok}
             else
               {:halt, :erro}
@@ -119,234 +113,198 @@ defmodule Pf do
           end)
 
         case resultado do
-          :ok -> oresto(mapa_sem_k, k + 1)
+          :ok -> restante(mapa_sem_k, k + 1)
           :erro -> :erro
         end
     end
   end
 
-  def blocos_sobre(mapa) do
-    mapa_sem_zero = Map.drop(mapa, [0])
+  def blocos_sobrepostos(mapa) do
+    mapa_sem_tabuleiro = Map.drop(mapa, [0])
+    Enum.map(mapa_sem_tabuleiro, fn {k, _} -> restante(mapa_sem_tabuleiro, k) end)
+  end
 
-    Enum.map(mapa_sem_zero, fn {k, _} ->
-      oresto(mapa_sem_zero, k)
+  def existe_sobreposicao(lista) do
+    if Enum.member?(lista, :erro), do: 0, else: 1
+  end
+
+  def gerar_movimentos(mapa, k) do
+    {x, y, larg, alt, tipo} = mapa[k]
+    mapa_sem_k = Map.drop(mapa, [k])
+
+    cond do
+      tipo == "v" ->
+        mover_vertical(mapa_sem_k, k, x, y, larg, alt, tipo)
+
+      tipo == "h" ->
+        mover_horizontal(mapa_sem_k, k, x, y, larg, alt, tipo)
+
+      tipo == "b" ->
+        mover_bloco(mapa_sem_k, k, x, y, larg, alt, tipo)
+
+      true -> :erro
+    end
+  end
+
+  def mover_vertical(mapa, k, x, y, larg, alt, tipo) do
+    mov1 = Map.put(mapa, k, {x + 1, y, larg, alt, tipo})
+    mov2 = Map.put(mapa, k, {x - 1, y, larg, alt, tipo})
+    mov3 = Map.put(mapa, k, {x, y + 10000, larg, alt, tipo})
+    mov4 = Map.put(mapa, k, {x, y - 10000, larg, alt, tipo})
+
+    validar_movimentos([mov1, mov2, mov3, mov4], k)
+  end
+
+  def mover_horizontal(mapa, k, x, y, larg, alt, tipo) do
+    mov1 = Map.put(mapa, k, {x + 10000, y, larg, alt, tipo})
+    mov2 = Map.put(mapa, k, {x - 10000, y, larg, alt, tipo})
+    mov3 = Map.put(mapa, k, {x, y + 1, larg, alt, tipo})
+    mov4 = Map.put(mapa, k, {x, y - 1, larg, alt, tipo})
+
+    validar_movimentos([mov1, mov2, mov3, mov4], k)
+  end
+
+  def mover_bloco(mapa, k, x, y, larg, alt, tipo) do
+    mov1 = Map.put(mapa, k, {x + 1, y, larg, alt, tipo})
+    mov2 = Map.put(mapa, k, {x - 1, y, larg, alt, tipo})
+    mov3 = Map.put(mapa, k, {x, y + 1, larg, alt, tipo})
+    mov4 = Map.put(mapa, k, {x, y - 1, larg, alt, tipo})
+
+    validar_movimentos([mov1, mov2, mov3, mov4], k)
+  end
+
+  def validar_movimentos(movimentos, k) do
+    Enum.filter(movimentos, fn mapa ->
+      tamanho_valido(mapa) == :ok and checar_sobreposicao(mapa, k) == :ok
     end)
   end
 
-  def tem_erro(l) do
-    if Enum.member?(l, :erro) do
-      0
-    else
-      1
-    end
+  def checar_sobreposicao(mapa, k) do
+    mapa_sem_k = Map.drop(mapa, [0])
+    validar_sobreposicao(mapa_sem_k, k)
   end
 
+  def validar_sobreposicao(mapa, k) do
+    {x, y, larg, alt, _} = mapa[k]
+    mapa_restante = Map.drop(mapa, [k])
 
-  def verpossibilidades(mapa, k) do
-    {x, y, xlarg, yaltu, freedom} = mapa[k]
-
-    mapa2 = Map.drop(mapa, [k])
-    xx = x
-    yy = y
-
-    cond do
-      freedom == "v" ->
-        mapax1 = Map.put(mapa2, k, {xx + 1, y, xlarg, yaltu, freedom})
-        mapax2 = Map.put(mapa2, k, {xx - 1, y, xlarg, yaltu, freedom})
-        mapay1 = Map.put(mapa2, k, {x, yy + 10000, xlarg, yaltu, freedom})
-        mapay2 = Map.put(mapa2, k, {x, yy - 10000, xlarg, yaltu, freedom})
-        aux2valido(valido(mapax1, mapax2, mapay1, mapay2, k), [mapax1, mapax2, mapay1, mapay2])
-
-      freedom == "h" ->
-        mapax1 = Map.put(mapa2, k, {xx + 10000, y, xlarg, yaltu, freedom})
-        mapax2 = Map.put(mapa2, k, {xx - 10000, y, xlarg, yaltu, freedom})
-        mapay1 = Map.put(mapa2, k, {x, yy + 1, xlarg, yaltu, freedom})
-        mapay2 = Map.put(mapa2, k, {x, yy - 1, xlarg, yaltu, freedom})
-        aux2valido(valido(mapax1, mapax2, mapay1, mapay2, k), [mapax1, mapax2, mapay1, mapay2])
-
-      freedom == "b" ->
-        mapax1 = Map.put(mapa2, k, {xx + 1, y, xlarg, yaltu, freedom})
-        mapax2 = Map.put(mapa2, k, {xx - 1, y, xlarg, yaltu, freedom})
-        mapay1 = Map.put(mapa2, k, {x, yy + 1, xlarg, yaltu, freedom})
-        mapay2 = Map.put(mapa2, k, {x, yy - 1, xlarg, yaltu, freedom})
-        aux2valido(valido(mapax1, mapax2, mapay1, mapay2, k), [mapax1, mapax2, mapay1, mapay2])
-
-      true ->
-        :erro
-    end
+    Enum.reduce_while(mapa_restante, :ok, fn {_, {x2, y2, larg2, alt2, _}}, _ ->
+      if x + larg <= x2 or x2 + larg2 <= x or y + alt <= y2 or y2 + alt2 <= y do
+        {:cont, :ok}
+      else
+        {:halt, :erro}
+      end
+    end)
   end
 
-  def valido(mapax1, mapax2, mapay1, mapay2, k) do
-    mapaxx1 = Map.drop(mapax1, [0])
-    mapaxx2 = Map.drop(mapax2, [0])
-    mapayy1 = Map.drop(mapay1, [0])
-    mapayy2 = Map.drop(mapay2, [0])
-
-    [
-      auxvalido(tamanho(mapax1), oresto1(mapaxx1, k)),
-      auxvalido(tamanho(mapax2), oresto1(mapaxx2, k)),
-      auxvalido(tamanho(mapay1), oresto1(mapayy1, k)),
-      auxvalido(tamanho(mapay2), oresto1(mapayy2, k))
-    ]
+  def objetivo_alcancado?(mapa) do
+    {largura, _} = mapa[0]
+    {_, {_, y1, lar, _, _}} = Enum.find(mapa, fn {k, _} -> k == 1 end)
+    y1 + lar == largura + 1
   end
 
-  def aux2valido([], _) do
-    []
+  def bfs(inicio, gerar, objetivo) do
+    fila = :queue.from_list([{inicio, [inicio]}])
+    visitados = MapSet.new([inicio])
+    bfs_loop(fila, visitados, gerar, objetivo)
   end
 
-  def aux2valido([a | t], [h | c]) do
-    if a == :ok do
-      [h | aux2valido(t, c)]
-    else
-      aux2valido(t, c)
-    end
-  end
-
-  def auxvalido(a, k) do
-    if a == :ok and k == :ok do
-      :ok
-    else
-      :noop
-    end
-  end
-
-  defp objetivo(mapa) do
-    {largura, _} = Map.fetch!(mapa, 0)
-    {_, {_, y1, larg1, _, _}} = Enum.find(mapa, fn {k, _} -> k == 1 end)
-
-    y1 + larg1 == largura + 1
-  end
-
-
-  def bfs(start, graph_fun, objetivo_fun) do
-    queue = :queue.from_list([{start, [start]}])
-    visitados = MapSet.new([start])
-
-    bfs_loop(queue, visitados, graph_fun, objetivo_fun)
-  end
-
-  # Loop principal do BFS
-  defp bfs_loop(queue, visitados, graph_fun, objetivo_fun) do
-    case :queue.out(queue) do
-      {:empty, _} ->
-        :sem_caminho
+  defp bfs_loop(fila, visitados, gerar, objetivo) do
+    case :queue.out(fila) do
+      {:empty, _} -> :sem_caminho
 
       {{:value, {atual, caminho}}, resto} ->
-
-        if objetivo_fun.(atual) do
+        if objetivo.(atual) do
           {:ok, Enum.reverse(caminho)}
         else
-
           {novos_visitados, novos_nos} =
-            for v <- graph_fun.(atual), reduce: {visitados, []} do
+            for viz <- gerar.(atual), reduce: {visitados, []} do
               {vis, acc} ->
-                if MapSet.member?(vis, v) do
+                if MapSet.member?(vis, viz) do
                   {vis, acc}
                 else
-                  {MapSet.put(vis, v), [{v, [v | caminho]} | acc]}
+                  {MapSet.put(vis, viz), [{viz, [viz | caminho]} | acc]}
                 end
             end
 
           bfs_loop(
             :queue.join(resto, :queue.from_list(Enum.reverse(novos_nos))),
             novos_visitados,
-            graph_fun,
-            objetivo_fun
+            gerar,
+            objetivo
           )
         end
     end
   end
 
+  # Funções para construir lista de passos a partir do caminho (estados)
+  def gerar_lista_de_passos(:sem_caminho), do: []
+  def gerar_lista_de_passos({:ok, caminho}), do: listas(caminho)
 
-  def oresto1(mapa, k) do
-
-      {x, y, larg, altu, _} = mapa[k]
-        mapa_sem_k = Map.drop(mapa, [k])
-
-          Enum.reduce_while(mapa_sem_k, :ok, fn {_, {x2, y2, larg2, altu2, _}}, _ ->
-            if x + larg <= x2 or
-                 x2 + larg2 <= x or
-                 y + altu <= y2 or
-                 y2 + altu2 <= y do
-              {:cont, :ok}
-            else
-              {:halt, :erro}
-            end
-          end)
+  def listas([]), do: []
+  def listas([_]), do: []
+  def listas([a, b | t]) do
+    [colocandostring(achar_blocodiff(a, b)) | listas([b | t])]
   end
 
+  def achar_blocodiff(a, k) do
+    mapaa = Map.drop(a, [0])
+    mapak = Map.drop(k, [0])
 
-  def listas({_,[a|t]}) do
-    listas(a,t)
+    Enum.reduce_while(mapaa, :ok, fn {key, {x2, y2, _, _, _}}, _ ->
+      case Map.fetch(mapak, key) do
+        {:ok, {x_b, y_b, _, _, _}} ->
+          if x2 == x_b and y2 == y_b do
+            {:cont, :ok}
+          else
+            {:halt, {x2, y2, x_b, y_b, key}}
+          end
+      end
+    end)
   end
-  def listas(a,k,[]) do
-     [kafka(xampra(a,k))]
 
-  end
-  def listas(a,[k|t]) do
-    listas(a,k,t)
-  end
-  def listas(a,k,[p|t]) do
-     [kafka(xampra(a,k))|listas(k,p,t)]
-
-  end
-  def xampra(a, k) do
-  mapaa = Map.drop(a, [0])
-  mapak = Map.drop(k, [0])
-
-  Enum.reduce_while(mapaa, :ok, fn {key, {x2, y2, _, _, _}}, _ ->
-    case Map.fetch(mapak, key) do
-      {:ok, {x_b, y_b, _, _, _}} ->
-
-        if x2 == x_b and y2 == y_b do
-          {:cont, :ok}
-        else
-          {:halt, {x2, y2, x_b, y_b,key}}
-        end
-    end
-  end)
-end
-  def kafka({x1,y1,x2,y2,k}) do
+  def colocandostring({x1, y1, x2, y2, k}) do
     cond do
       x1 > x2 ->
         "Move block #{k} NORTH, 1 step"
 
       x2 > x1 ->
-         "Move block #{k} SOUTH, 1 step"
+        "Move block #{k} SOUTH, 1 step"
 
       y1 > y2 ->
-         "Move block #{k} WEST, 1 step"
+        "Move block #{k} WEST, 1 step"
 
       y2 > y1 ->
-         "Move block #{k} EAST, 1 step"
-
+        "Move block #{k} EAST, 1 step"
     end
   end
-  def compactar(lista) do
-  lista
-  |> Enum.chunk_by(fn x ->
-    String.replace_suffix(x, "1 step", "")   # ignora o número do passo
-  end)
-  |> Enum.map(fn grupo ->
-    base = String.replace_suffix(hd(grupo), "1 step", "")
-    count = length(grupo)
 
-    passos =
-      if count == 1 do
-        "1 step"
-      else
-        "#{count} steps"
-      end
+  def compactar_passos(lista) do
+    lista
+    |> Enum.chunk_by(fn x ->
+      String.replace_suffix(x, "1 step", "")   # ignora o número do passo
+    end)
+    |> Enum.map(fn grupo ->
+      base = String.replace_suffix(hd(grupo), "1 step", "")
+      count = length(grupo)
 
-    base <> passos
-  end)
-end
-def ioput([]) do
-  IO.puts("Deu certo!!!")
-end
- def ioput ([a|t]) do
-  IO.puts(a)
-  ioput(t)
- end
+      passos =
+        if count == 1 do
+          "1 step"
+        else
+          "#{count} steps"
+        end
 
+      base <> passos
+    end)
+  end
+
+  def imprimir_saida([]) do
+    IO.puts("Deu certo!!!")
+  end
+
+  def imprimir_saida([a | t]) do
+    IO.puts(a)
+    imprimir_saida(t)
+  end
 end
