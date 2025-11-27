@@ -62,7 +62,7 @@ defmodule Pf do
           bfs(mapa, &achar_vizinhos/1, &objetivo_alcancado?/1)
           |> gerar_lista_de_passos()
           |> compactar_passos()
-          |> imprimir_saida()
+          |> kk()
         end
       else
         "Entrada invalida, blocos sobrepostos"
@@ -283,7 +283,7 @@ defmodule Pf do
   lista
   |> Enum.chunk_by(& &1)
   |> Enum.map(fn grupo ->
-    elem = hd(grupo)                  
+    elem = hd(grupo)
     count = length(grupo)
 
     base = String.trim_trailing(elem, "1 step")
@@ -299,7 +299,12 @@ defmodule Pf do
   end)
 end
 
-
+  def kk([]) do
+    IO.puts("Nao tem solucao")
+  end
+  def kk([a|t]) do
+    imprimir_saida([a|t])
+  end
   def imprimir_saida([]) do
     IO.puts("Deu certo!!!")
   end

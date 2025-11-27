@@ -82,3 +82,7 @@ Exibe a sequência final de comandos
 
 Abre o interpretador com o comando "iex -S mix"
 depois escreve o comando Pf.ler_dados("caminho do arquivo")
+
+# O uso de IA
+
+Ela foi usada tanto no bfs quanto para descobrir funçoes no elixir como List.flatten e Enum.chunck_by
