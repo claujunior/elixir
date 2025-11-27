@@ -280,24 +280,25 @@ defmodule Pf do
   end
 
   def compactar_passos(lista) do
-    lista
-    |> Enum.chunk_by(fn x ->
-      String.replace_suffix(x, "1 step", "")   # ignora o número do passo
-    end)
-    |> Enum.map(fn grupo ->
-      base = String.replace_suffix(hd(grupo), "1 step", "")
-      count = length(grupo)
+  lista
+  |> Enum.chunk_by(& &1)
+  |> Enum.map(fn grupo ->
+    elem = hd(grupo)                  
+    count = length(grupo)
 
-      passos =
-        if count == 1 do
-          "1 step"
-        else
-          "#{count} steps"
-        end
+    base = String.trim_trailing(elem, "1 step")
 
-      base <> passos
-    end)
-  end
+    passos =
+      if count == 1 do
+        "1 step"
+      else
+        "#{count} steps"
+      end
+
+    base <> passos
+  end)
+end
+
 
   def imprimir_saida([]) do
     IO.puts("Deu certo!!!")
