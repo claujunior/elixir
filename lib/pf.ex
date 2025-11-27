@@ -1,4 +1,28 @@
 defmodule Pf do
+  @moduledoc """
+  Módulo responsável por ler um arquivo de entrada contendo um tabuleiro e seus blocos,
+  validar a configuração inicial, gerar todos os movimentos possíveis e resolver o
+  quebra-cabeça utilizando BFS (Busca em Largura).
+
+  ## Funcionalidades principais
+
+    * Leitura do arquivo e parse da entrada.
+    * Validação dos tamanhos e limites do tabuleiro.
+    * Detecção de sobreposição entre blocos.
+    * Geração de movimentos válidos (vertical, horizontal e bloco livre).
+    * Busca BFS para encontrar sequência mínima de movimentos.
+    * Geração de passos textuais e compactação de passos repetidos.
+  """
+
+  @doc """
+  Lê e processa o arquivo de entrada contendo o tabuleiro e os blocos.
+
+  Retorna:
+
+    * Estrutura de dados do tabuleiro caso esteja correto.
+    * Mensagem de erro caso a entrada seja inválida.
+
+  """
   def ler_dados(caminho_arquivo) do
     try do
       stream = File.stream!(caminho_arquivo, [], :line)
@@ -33,6 +57,12 @@ defmodule Pf do
     end
   end
 
+  @doc """
+  Faz checagens básicas do tabuleiro antes de validar blocos:
+
+    * Tabuleiro maior que o permitido (100×100).
+    * Quantidade máxima de blocos (128).
+  """
   def checar_valores(largura_tab, altura_tab, mapa) do
     cond do
       largura_tab >= 100 or altura_tab >= 100 ->
@@ -46,6 +76,13 @@ defmodule Pf do
     end
   end
 
+  @doc """
+  Realiza todas as validações do tabuleiro:
+
+    * Blocos dentro da área válida.
+    * Sem sobreposições.
+    * Letras dos blocos reconhecidas (`h`, `v`, `b`).
+  """
   def validar_mapa(mapa) do
     if tamanho_valido(mapa) == :ok do
       if existe_sobreposicao(blocos_sobrepostos(mapa)) == 1 do
@@ -72,6 +109,9 @@ defmodule Pf do
     end
   end
 
+  @doc """
+  Gera todos os vizinhos (estados alcançáveis) a partir de um mapa.
+  """
   def achar_vizinhos(mapa) do
     mapa_sem_tabuleiro = Map.drop(mapa, [0])
 
@@ -83,6 +123,9 @@ defmodule Pf do
     List.flatten(movimentos)
   end
 
+  @doc """
+  Confere se cada bloco está dentro dos limites do tabuleiro.
+  """
   def tamanho_valido(mapa) do
     {larg, alt} = mapa[0]
     mapa_sem_tabuleiro = Map.drop(mapa, [0])
@@ -96,6 +139,9 @@ defmodule Pf do
     end)
   end
 
+  @doc """
+  Verifica sobreposição entre todos os blocos, chamando `restante/2` para cada bloco.
+  """
   def restante(mapa, _) when map_size(mapa) <= 1, do: :ok
   def restante(mapa, k) do
     case Map.get(mapa, k) do
@@ -119,33 +165,39 @@ defmodule Pf do
     end
   end
 
+  @doc """
+  Aplica `restante/2` para todos os blocos e retorna lista de `:ok` ou `:erro`.
+  """
   def blocos_sobrepostos(mapa) do
     mapa_sem_tabuleiro = Map.drop(mapa, [0])
     Enum.map(mapa_sem_tabuleiro, fn {k, _} -> restante(mapa_sem_tabuleiro, k) end)
   end
 
+  @doc """
+  Retorna 0 se houver qualquer sobreposição, 1 caso contrário.
+  """
   def existe_sobreposicao(lista) do
     if Enum.member?(lista, :erro), do: 0, else: 1
   end
 
+  @doc """
+  Gera movimentos válidos para um bloco específico.
+  """
   def gerar_movimentos(mapa, k) do
     {x, y, larg, alt, tipo} = mapa[k]
     mapa_sem_k = Map.drop(mapa, [k])
 
     cond do
-      tipo == "v" ->
-        mover_vertical(mapa_sem_k, k, x, y, larg, alt, tipo)
-
-      tipo == "h" ->
-        mover_horizontal(mapa_sem_k, k, x, y, larg, alt, tipo)
-
-      tipo == "b" ->
-        mover_bloco(mapa_sem_k, k, x, y, larg, alt, tipo)
-
+      tipo == "v" -> mover_vertical(mapa_sem_k, k, x, y, larg, alt, tipo)
+      tipo == "h" -> mover_horizontal(mapa_sem_k, k, x, y, larg, alt, tipo)
+      tipo == "b" -> mover_bloco(mapa_sem_k, k, x, y, larg, alt, tipo)
       true -> :erro
     end
   end
 
+  @doc """
+  Movimentos permitidos para bloco vertical.
+  """
   def mover_vertical(mapa, k, x, y, larg, alt, tipo) do
     mov1 = Map.put(mapa, k, {x + 1, y, larg, alt, tipo})
     mov2 = Map.put(mapa, k, {x - 1, y, larg, alt, tipo})
@@ -155,6 +207,9 @@ defmodule Pf do
     validar_movimentos([mov1, mov2, mov3, mov4], k)
   end
 
+  @doc """
+  Movimentos permitidos para bloco horizontal.
+  """
   def mover_horizontal(mapa, k, x, y, larg, alt, tipo) do
     mov1 = Map.put(mapa, k, {x + 10000, y, larg, alt, tipo})
     mov2 = Map.put(mapa, k, {x - 10000, y, larg, alt, tipo})
@@ -164,6 +219,9 @@ defmodule Pf do
     validar_movimentos([mov1, mov2, mov3, mov4], k)
   end
 
+  @doc """
+  Movimentos permitidos para bloco livre (`b`).
+  """
   def mover_bloco(mapa, k, x, y, larg, alt, tipo) do
     mov1 = Map.put(mapa, k, {x + 1, y, larg, alt, tipo})
     mov2 = Map.put(mapa, k, {x - 1, y, larg, alt, tipo})
@@ -173,17 +231,26 @@ defmodule Pf do
     validar_movimentos([mov1, mov2, mov3, mov4], k)
   end
 
+  @doc """
+  Filtra uma lista de estados mantendo apenas os válidos.
+  """
   def validar_movimentos(movimentos, k) do
     Enum.filter(movimentos, fn mapa ->
       tamanho_valido(mapa) == :ok and checar_sobreposicao(mapa, k) == :ok
     end)
   end
 
+  @doc """
+  Checa se o movimento causa sobreposição com outros blocos.
+  """
   def checar_sobreposicao(mapa, k) do
     mapa_sem_k = Map.drop(mapa, [0])
     validar_sobreposicao(mapa_sem_k, k)
   end
 
+  @doc """
+  Verifica sobreposição entre um bloco e todos os outros.
+  """
   def validar_sobreposicao(mapa, k) do
     {x, y, larg, alt, _} = mapa[k]
     mapa_restante = Map.drop(mapa, [k])
@@ -197,12 +264,18 @@ defmodule Pf do
     end)
   end
 
+  @doc """
+  Verifica se o bloco 1 atingiu o lado direito do tabuleiro.
+  """
   def objetivo_alcancado?(mapa) do
     {largura, _} = mapa[0]
     {_, {_, y1, lar, _, _}} = Enum.find(mapa, fn {k, _} -> k == 1 end)
     y1 + lar == largura + 1
   end
 
+  @doc """
+  Executa BFS retornando o caminho encontrado ou `:sem_caminho`.
+  """
   def bfs(inicio, gerar, objetivo) do
     fila = :queue.from_list([{inicio, [inicio]}])
     visitados = MapSet.new([inicio])
@@ -237,7 +310,9 @@ defmodule Pf do
     end
   end
 
-  # Funções para construir lista de passos a partir do caminho (estados)
+  @doc """
+  Converte o caminho de estados em lista de strings de movimentos.
+  """
   def gerar_lista_de_passos(:sem_caminho), do: []
   def gerar_lista_de_passos({:ok, caminho}), do: listas(caminho)
 
@@ -247,6 +322,9 @@ defmodule Pf do
     [colocandostring(achar_blocodiff(a, b)) | listas([b | t])]
   end
 
+  @doc """
+  Identifica qual bloco mudou de posição entre dois estados.
+  """
   def achar_blocodiff(a, k) do
     mapaa = Map.drop(a, [0])
     mapak = Map.drop(k, [0])
@@ -263,48 +341,63 @@ defmodule Pf do
     end)
   end
 
+  @doc """
+  Dado o movimento entre dois estados, gera a frase correspondente:
+
+    * `"Move block K NORTH, 1 step"`
+    * `"Move block K EAST, 1 step"`
+  """
   def colocandostring({x1, y1, x2, y2, k}) do
     cond do
-      x1 > x2 ->
-        "Move block #{k} NORTH, 1 step"
-
-      x2 > x1 ->
-        "Move block #{k} SOUTH, 1 step"
-
-      y1 > y2 ->
-        "Move block #{k} WEST, 1 step"
-
-      y2 > y1 ->
-        "Move block #{k} EAST, 1 step"
+      x1 > x2 -> "Move block #{k} NORTH, 1 step"
+      x2 > x1 -> "Move block #{k} SOUTH, 1 step"
+      y1 > y2 -> "Move block #{k} WEST, 1 step"
+      y2 > y1 -> "Move block #{k} EAST, 1 step"
     end
   end
 
+  @doc """
+  Compacta movimentos repetidos consecutivos:
+
+  ### Exemplo
+
+      ["Move block 3 EAST, 1 step", "Move block 3 EAST, 1 step"]
+
+  vira:
+
+      "Move block 3 EAST, 2 steps"
+  """
   def compactar_passos(lista) do
-  lista
-  |> Enum.chunk_by(& &1)
-  |> Enum.map(fn grupo ->
-    elem = hd(grupo)
-    count = length(grupo)
+    lista
+    |> Enum.chunk_by(& &1)
+    |> Enum.map(fn grupo ->
+      elem = hd(grupo)
+      count = length(grupo)
 
-    base = String.trim_trailing(elem, "1 step")
+      base = String.trim_trailing(elem, "1 step")
 
-    passos =
-      if count == 1 do
-        "1 step"
-      else
-        "#{count} steps"
-      end
+      passos =
+        if count == 1 do
+          "1 step"
+        else
+          "#{count} steps"
+        end
 
-    base <> passos
-  end)
-end
+      base <> passos
+    end)
+  end
 
+  @doc """
+  Exibe os resultados no terminal.
+  """
   def kk([]) do
     IO.puts("Nao tem solucao")
   end
-  def kk([a|t]) do
-    imprimir_saida([a|t])
+
+  def kk([a | t]) do
+    imprimir_saida([a | t])
   end
+
   def imprimir_saida([]) do
     IO.puts("Deu certo!!!")
   end
